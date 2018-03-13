@@ -1,0 +1,64 @@
+#/bin/bash
+
+# VNC password. See man page for a secure way to use password
+VNC_password=_yourpassword_
+
+# retrive active display name
+display_name=$(xrandr | grep primary | awk '{print $1}')
+
+# get current display size and...
+display_width=$(xrandr | grep primary | awk '{print $4}' | awk -Fx '{print $1}')
+display_height=$(xrandr | grep primary | awk '{print $4}' | awk -F[x+] '{print $2}')
+display_res=$display_width'x'$display_height
+# ...double the width
+display_2width=$(expr $display_width \* 2)
+display_2res=$display_2width'x'$display_height
+
+
+# START virtual remote screen
+_start() {
+
+	# set virtual display size
+	# xrandr --output eDP-1 --auto --rotate normal --pos 0x0 --fb 3840x1080 --panning 1920x1080+0+0/1920x1080+0+0/0/0/0/0
+	xrandr --output $display_name --auto --rotate normal --pos 0x0 --fb $display_2res --panning $display_res+0+0/$display_res+0+0/0/0/0/0
+
+	sleep 3
+
+	# start VNC server to cover extra display size
+	x11vnc -display :0 -clip $display_res+$display_width+0 -forever -solid darkblue -bg -ncache_cr -passwd $VNC_password
+}
+
+
+# STOP virtual remote screen
+_stop() {
+	# stop VNC (may be we need a finest way!)
+	killall x11vnc
+
+	# restore default display size
+	xrandr --output $display_name --auto --fb $(xrandr | grep \* | awk '{print $1}')
+}
+
+# Print usage
+_help() {
+	echo "$0 start a virtual display server to use with a mobile device (tablet i better)"
+	echo "  usage:"
+	echo "	$0 start|stop|help"
+}
+
+
+# Main
+
+while [ "$1" != "" ]; do
+    case $1 in
+	start )		_start
+			exit
+			;;
+	stop )		_stop
+			exit
+			;;
+	* )		_help
+			exit
+    esac
+    shift
+done
+
